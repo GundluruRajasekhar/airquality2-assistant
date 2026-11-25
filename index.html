@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Urban Air Quality Assistant: AQI category, personalised health advice, trend chart, city comparison, CSV export, voice guidance and built-in self-tests. Offline and private.">
+<title>Urban Air Quality Assistant</title>
+<style>
+:root{--bg:#eef7f0;--sf:#fff;--tx:#14281b;--mu:#4a5f50;--pr:#1b6b35;--pt:#fff;--bd:#cfe3d4;--fc:#0b57d0;--ac:#e3f3e7;--er:#b3261e;
+--good:#1b7f3b;--moderate:#8a6d00;--sensitive:#b35400;--unhealthy:#b3261e;--very:#7b1fa2;--hazard:#5d1049}
+:root[data-theme=dark]{--bg:#0f1a13;--sf:#18271d;--tx:#e8f3ea;--mu:#a9bfae;--pr:#5fcf80;--pt:#0b1a10;--bd:#2c4233;--fc:#8ab4ff;--ac:#1f3426;--er:#ff8a80;
+--good:#6fe08f;--moderate:#f2cf4a;--sensitive:#ffa24d;--unhealthy:#ff8a80;--very:#e1a0f0;--hazard:#f59bd6}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.55}
+.skip{position:absolute;left:-999px;top:0;background:var(--pr);color:var(--pt);padding:10px 14px;z-index:9}.skip:focus{left:8px;top:8px}
+header{padding:22px 16px 6px;text-align:center;position:relative}
+h1{margin:0 0 6px;font-size:clamp(1.5rem,4vw,2.3rem)}header p{margin:0 auto;max-width:640px;color:var(--mu)}
+#theme{position:absolute;right:12px;top:12px}
+nav{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:12px}
+nav a{color:var(--tx);text-decoration:none;border:1px solid var(--bd);background:var(--sf);padding:7px 13px;border-radius:999px;font-weight:600}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--fc);outline-offset:2px}
+main{max-width:980px;margin:0 auto;padding:6px 16px 36px;display:grid;gap:16px}
+section{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:20px}
+h2{margin:0 0 12px;font-size:1.3rem}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:end}.field{display:flex;flex-direction:column;gap:4px;flex:1 1 170px}
+label{font-weight:600}
+input,select{padding:11px;border:1px solid var(--bd);border-radius:8px;font-size:1rem;background:var(--bg);color:var(--tx)}
+button{padding:10px 18px;border:0;border-radius:8px;background:var(--pr);color:var(--pt);font-size:1rem;font-weight:700;cursor:pointer}
+button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+.hint{color:var(--mu);font-size:.9rem;margin:6px 0 0}.error{color:var(--er);font-weight:600;min-height:1.4em;margin:8px 0 0}
+.alert{margin-top:14px;padding:12px 16px;border-radius:8px;background:var(--er);color:#fff;font-weight:700}
+.result{margin-top:16px;border-left:8px solid var(--bd);padding:12px 16px;border-radius:8px;background:var(--bg)}
+.result h3{margin:0 0 4px;font-size:1.35rem}
+.gauge{height:14px;border-radius:7px;margin-top:14px;position:relative;background:linear-gradient(90deg,#2e9e4f 0 16%,#e6c200 16% 33%,#f08a24 33% 50%,#d93a2f 50% 66%,#8e24aa 66% 83%,#6a1b4d 83% 100%)}
+.gauge span{position:absolute;top:-5px;width:6px;height:24px;background:var(--tx);border-radius:3px;transform:translateX(-50%);transition:left .3s}
+ul.adv{padding-left:20px;margin:8px 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px}
+.stat{background:var(--ac);border-radius:10px;padding:10px;text-align:center}.stat b{display:block;font-size:1.4rem}
+svg.chart{width:100%;height:auto;color:var(--tx);background:var(--bg);border-radius:8px}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--bd)}
+caption{text-align:left;font-weight:700;padding:10px 0 6px}.tw{overflow-x:auto}
+.cat-good{color:var(--good)}.cat-moderate{color:var(--moderate)}.cat-sensitive{color:var(--sensitive)}.cat-unhealthy{color:var(--unhealthy)}.cat-very{color:var(--very)}.cat-hazard{color:var(--hazard)}
+.cmp{display:inline-block;height:10px;border-radius:5px;background:var(--pr);vertical-align:middle}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+footer{text-align:center;color:var(--mu);padding:16px 16px 36px;font-size:.9rem}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#checker">Skip to AQI checker</a>
+<header>
+  <button id="theme" class="sec" type="button" aria-pressed="false" aria-label="Toggle dark mode">🌓 Theme</button>
+  <h1><span aria-hidden="true">🌿</span> Urban Air Quality Assistant</h1>
+  <p>Turn any AQI reading into a clear category, personalised health advice, and a trend you can track and export.</p>
+</header>
+<nav aria-label="Page sections">
+  <a href="#checker">Checker</a><a href="#history">History &amp; Trend</a><a href="#compare">Compare</a><a href="#scale">Scale</a><a href="#tests">Self-tests</a><a href="#about">About</a>
+</nav>
+<main>
+<section id="checker" aria-labelledby="h-c">
+  <h2 id="h-c">📊 AQI Checker</h2>
+  <div class="row">
+    <div class="field"><label for="aqi">AQI value (0–500)</label>
+      <input id="aqi" type="number" inputmode="numeric" min="0" max="500" step="1" required aria-describedby="aqi-help aqi-err" placeholder="e.g. 135"></div>
+    <div class="field"><label for="group">Advice for</label>
+      <select id="group"><option value="general">General public</option><option value="children">Children</option><option value="elderly">Elderly</option><option value="respiratory">Asthma / heart / lung conditions</option><option value="outdoor">Outdoor workers / athletes</option></select></div>
+    <div class="field"><label for="place">Place (optional)</label><input id="place" type="text" maxlength="40" placeholder="e.g. Hyderabad"></div>
+  </div>
+  <div class="btns">
+    <button id="analyze" type="button" aria-label="Analyze air quality">Analyze</button>
+    <button id="sample" type="button" class="sec">Try a sample</button>
+  </div>
+  <p id="aqi-help" class="hint">Use the AQI from your local pollution board or weather app.</p>
+  <p id="aqi-err" class="error" role="alert"></p>
+  <div id="alert" class="alert" role="alert" hidden></div>
+  <div id="result" class="result" hidden aria-live="polite">
+    <h3 id="r-title"></h3><p id="r-desc"></p>
+    <div class="gauge" id="meter" role="meter" aria-label="Risk score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="mark"></span></div>
+    <p id="r-risk" class="hint"></p>
+    <h4 style="margin:12px 0 0">Recommended actions</h4><ul id="r-adv" class="adv"></ul>
+    <button id="speak" type="button" class="sec">🔊 Read aloud</button>
+  </div>
+</section>
+
+<section id="history" aria-labelledby="h-h">
+  <h2 id="h-h">🕒 History &amp; Trend</h2>
+  <p id="h-empty" class="hint">No checks yet. Analyze a value to build your trend.</p>
+  <div id="h-wrap" hidden>
+    <div class="stats" id="stats"></div>
+    <svg id="chart" class="chart" viewBox="0 0 600 200" role="img" aria-label="AQI trend chart"></svg>
+    <div class="tw"><table><caption>Last 20 readings (stored only on this device)</caption>
+      <thead><tr><th scope="col">Time</th><th scope="col">Place</th><th scope="col">AQI</th><th scope="col">Category</th></tr></thead><tbody id="h-body"></tbody></table></div>
+    <div class="btns">
+      <button id="csv" type="button">⬇ Export CSV</button>
+      <button id="report" type="button" class="sec">📄 Download report</button>
+      <button id="clear" type="button" class="sec">Clear history</button>
+    </div>
+  </div>
+</section>
+
+<section id="compare" aria-labelledby="h-m">
+  <h2 id="h-m">🏙️ Place Comparison</h2>
+  <p id="cmp-empty" class="hint">Check readings for two or more places to compare them here.</p>
+  <div class="tw" id="cmp-wrap" hidden><table><caption>Latest reading per place (highest first)</caption>
+    <thead><tr><th scope="col">Place</th><th scope="col">Latest AQI</th><th scope="col">Category</th><th scope="col">Readings</th><th scope="col">Level</th></tr></thead><tbody id="cmp-body"></tbody></table></div>
+</section>
+
+<section id="scale" aria-labelledby="h-s">
+  <h2 id="h-s">🎨 AQI Scale &amp; Tips</h2>
+  <div class="tw"><table><caption>Standard AQI categories</caption><thead><tr><th scope="col">AQI</th><th scope="col">Category</th></tr></thead><tbody id="scale-body"></tbody></table></div>
+  <ul class="adv"><li>Check the AQI before outdoor exercise and plan for cleaner hours.</li><li>Keep windows closed in peak pollution; ventilate when AQI is low.</li><li>Use an N95/FFP2 mask outdoors above AQI 150.</li><li>Prefer public transport, carpooling or cycling to cut emissions.</li></ul>
+</section>
+
+<section id="tests" aria-labelledby="h-t">
+  <h2 id="h-t">✅ Automated Self-Tests</h2>
+  <p class="hint">Runs the app's own logic against known cases (categories, boundaries, validation, advice, CSV safety).</p>
+  <button id="run-tests" type="button">Run self-tests</button>
+  <p id="t-sum" class="hint" role="status"></p>
+  <div class="tw"><table id="t-table" hidden><caption>Test results</caption><thead><tr><th scope="col">Test</th><th scope="col">Expected</th><th scope="col">Actual</th><th scope="col">Result</th></tr></thead><tbody id="t-body"></tbody></table></div>
+</section>
+
+<section id="about" aria-labelledby="h-a">
+  <h2 id="h-a">ℹ️ About</h2>
+  <p>A rule-based, offline web app that helps citizens understand air pollution and make safer outdoor decisions. No API keys, no tracking, no server: your data never leaves this device.</p>
+  <p class="hint">Guidance is general information, not medical advice.</p>
+</section>
+</main>
+<footer>Urban Air Quality Assistant · Accessible · Responsive · Private</footer>
+
+<script>
+"use strict";
+/* ========= Utilities ========= */
+const $ = (id) => document.getElementById(id);
+const h = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) { e.textContent = text; } if (cls) { e.className = cls; } return e; };
+
+/* ========= Module: AQI (pure logic, no DOM, fully testable) ========= */
+const AQI = (() => {
+  const LEVELS = [
+    { max: 50,  key: "good",      name: "Good",                           desc: "Air quality is satisfactory and poses little or no risk." },
+    { max: 100, key: "moderate",  name: "Moderate",                       desc: "Acceptable, but very sensitive people may notice effects." },
+    { max: 150, key: "sensitive", name: "Unhealthy for Sensitive Groups", desc: "Sensitive groups may experience health effects." },
+    { max: 200, key: "unhealthy", name: "Unhealthy",                      desc: "Everyone may begin to experience health effects." },
+    { max: 300, key: "very",      name: "Very Unhealthy",                 desc: "Health alert: everyone may experience serious effects." },
+    { max: 500, key: "hazard",    name: "Hazardous",                      desc: "Emergency conditions: the whole population is likely affected." }
+  ];
+  const BASE = {
+    good: ["Enjoy outdoor activities as usual.", "Good time to ventilate your home."],
+    moderate: ["Outdoor activity is fine for most people.", "Unusually sensitive people should limit long, heavy exertion."],
+    sensitive: ["Reduce prolonged outdoor exertion.", "Consider a well-fitted N95 mask outside.", "Keep windows closed in peak traffic hours."],
+    unhealthy: ["Avoid long outdoor activity; exercise indoors.", "Wear an N95/FFP2 mask outdoors.", "Run an air purifier indoors if available."],
+    very: ["Stay indoors with windows and doors closed.", "Use a purifier; wear an N95 if you must go out.", "Postpone outdoor exercise and travel."],
+    hazard: ["Stay indoors and avoid all outdoor exposure.", "Seal gaps, use a HEPA purifier, wear an N95 if going out is essential.", "Seek medical help for breathing difficulty, chest pain or dizziness."]
+  };
+  const GROUP = {
+    children:    { from: 2, tip: "Children breathe faster and are more vulnerable: limit outdoor play and school sports." },
+    elderly:     { from: 2, tip: "Older adults should limit outdoor trips and watch for fatigue or breathlessness." },
+    respiratory: { from: 1, tip: "Keep prescribed inhalers or medicines within reach and follow your doctor's plan." },
+    outdoor:     { from: 2, tip: "Reduce exertion, take frequent indoor breaks, and wear a respirator-grade mask." }
+  };
+  const ERR = "Please enter a valid AQI between 0 and 500 (whole number).";
+
+  /** Validate raw input. Returns {ok, value} or {ok:false, msg}. */
+  function validate(raw) {
+    const s = String(raw).trim();
+    const n = Number(s);
+    if (s === "" || !Number.isInteger(n) || n < 0 || n > 500) { return { ok: false, msg: ERR }; }
+    return { ok: true, value: n };
+  }
+  /** Index of the AQI level for a valid value. */
+  const levelIndex = (n) => LEVELS.findIndex((l) => n <= l.max);
+  /** Advice list: group tip (if risk is high enough) followed by category actions. */
+  function advise(n, group) {
+    const idx = levelIndex(n), g = GROUP[group], list = BASE[LEVELS[idx].key].slice();
+    if (g && idx >= g.from) { list.unshift(g.tip); }
+    return list;
+  }
+  /** Risk score 0-100 derived from AQI. */
+  const risk = (n) => Math.round(n / 5);
+  return { LEVELS, validate, levelIndex, advise, risk };
+})();
+
+/* ========= Module: Store (localStorage with safe fallbacks, CSV) ========= */
+const Store = (() => {
+  const KEY = "uaqa_history_v2", MAX = 20;
+  let mem = [];
+  try { const v = JSON.parse(localStorage.getItem(KEY) || "[]"); if (Array.isArray(v)) { mem = v.slice(-MAX); } } catch (e) { mem = []; }
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) { /* storage blocked: stay in memory */ } };
+  const all = () => mem.slice();
+  const add = (rec) => { mem.push(rec); mem = mem.slice(-MAX); persist(); };
+  const clear = () => { mem = []; persist(); };
+  /** CSV-safe cell: neutralises spreadsheet formulas and escapes quotes. */
+  function cell(v) {
+    let f = String(v);
+    if (/^[=+\-@\t\r]/.test(f)) { f = "'" + f; }
+    return /[",\n]/.test(f) ? '"' + f.replace(/"/g, '""') + '"' : f;
+  }
+  function toCSV(list) {
+    const rows = list.map((r) => [new Date(r.t).toISOString(), r.place, r.aqi, r.cat].map(cell).join(","));
+    return ["time,place,aqi,category"].concat(rows).join("\n");
+  }
+  function stats(list) {
+    const v = list.map((r) => r.aqi);
+    return { count: v.length, avg: Math.round(v.reduce((a, b) => a + b, 0) / v.length), max: Math.max.apply(null, v), min: Math.min.apply(null, v) };
+  }
+  /** Latest reading per place, plus number of readings, sorted by AQI desc. */
+  function byPlace(list) {
+    const m = {};
+    list.forEach((r) => { const k = r.place || "Unnamed"; m[k] = { place: k, aqi: r.aqi, cat: r.cat, n: ((m[k] && m[k].n) || 0) + 1 }; });
+    return Object.keys(m).map((k) => m[k]).sort((a, b) => b.aqi - a.aqi);
+  }
+  return { all, add, clear, toCSV, stats, byPlace, cell };
+})();
+
+/* ========= Module: A11y (announcements, errors, theme, voice) ========= */
+const A11y = (() => {
+  function showError(msg) {
+    $("aqi-err").textContent = msg;
+    if (msg) { $("aqi").setAttribute("aria-invalid", "true"); $("aqi").focus(); } else { $("aqi").removeAttribute("aria-invalid"); }
+  }
+  function setTheme(t) {
+    document.documentElement.dataset.theme = t;
+    $("theme").setAttribute("aria-pressed", String(t === "dark"));
+    try { localStorage.setItem("uaqa_theme", t); } catch (e) { /* ignore */ }
+  }
+  function initTheme() {
+    let t = null;
+    try { t = localStorage.getItem("uaqa_theme"); } catch (e) { /* ignore */ }
+    setTheme(t || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  }
+  const toggleTheme = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  function speak(text) {
+    if (!("speechSynthesis" in window)) { showError("Voice is not supported in this browser."); return; }
+    speechSynthesis.cancel();
+    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  }
+  return { showError, initTheme, toggleTheme, speak };
+})();
+
+/* ========= Module: Charts (dependency-free SVG trend line) ========= */
+const Charts = (() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const mk = (t, a) => { const e = document.createElementNS(NS, t); Object.keys(a).forEach((k) => e.setAttribute(k, a[k])); return e; };
+  function trend(svg, list) {
+    svg.textContent = "";
+    const W = 600, H = 200, P = 30, n = list.length, max = Math.max(200, Math.max.apply(null, list.map((r) => r.aqi)));
+    const X = (i) => (n === 1 ? W / 2 : P + (i * (W - 2 * P)) / (n - 1));
+    const Y = (v) => H - P - (v / max) * (H - 2 * P);
+    svg.appendChild(mk("line", { x1: P, y1: H - P, x2: W - P, y2: H - P, stroke: "currentColor", "stroke-opacity": ".4" }));
+    svg.appendChild(mk("line", { x1: P, y1: P, x2: P, y2: H - P, stroke: "currentColor", "stroke-opacity": ".4" }));
+    [[0, H - P], [max, P]].forEach((p) => { const t = mk("text", { x: 4, y: p[1] + 4, fill: "currentColor", "font-size": "11" }); t.textContent = p[0]; svg.appendChild(t); });
+    svg.appendChild(mk("polyline", { points: list.map((r, i) => X(i) + "," + Y(r.aqi)).join(" "), fill: "none", stroke: "currentColor", "stroke-width": "2" }));
+    list.forEach((r, i) => {
+      const c = mk("circle", { cx: X(i), cy: Y(r.aqi), r: 5 });
+      c.style.fill = "var(--" + AQI.LEVELS[AQI.levelIndex(r.aqi)].key + ")";
+      const t = document.createElementNS(NS, "title"); t.textContent = "AQI " + r.aqi + " (" + r.cat + ")"; c.appendChild(t); svg.appendChild(c);
+    });
+    svg.setAttribute("aria-label", "AQI trend chart, oldest to newest: " + list.map((r) => r.aqi).join(", "));
+  }
+  return { trend };
+})();
+
+/* ========= Module: UI (rendering and events) ========= */
+const UI = (() => {
+  let last = null;
+  const catCell = (name) => { const td = h("td", name); td.className = "cat-" + AQI.LEVELS[AQI.levelIndex(AQI.LEVELS.find((l) => l.name === name).max)].key; return td; };
+
+  function download(name, text, mime) {
+    const a = h("a"); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function renderHistory() {
+    const list = Store.all(), has = list.length > 0;
+    $("h-empty").hidden = has; $("h-wrap").hidden = !has;
+    const places = has ? Store.byPlace(list) : [];
+    $("cmp-empty").hidden = places.length > 1; $("cmp-wrap").hidden = places.length < 2;
+    if (!has) { return; }
+    const s = Store.stats(list), st = $("stats"); st.textContent = "";
+    [["Checks", s.count], ["Average", s.avg], ["Highest", s.max], ["Lowest", s.min]].forEach((p) => { const d = h("div", undefined, "stat"); d.appendChild(h("b", String(p[1]))); d.appendChild(h("span", p[0])); st.appendChild(d); });
+    Charts.trend($("chart"), list);
+    const body = $("h-body"); body.textContent = "";
+    list.slice().reverse().forEach((r) => {
+      const tr = h("tr");
+      tr.appendChild(h("td", new Date(r.t).toLocaleString())); tr.appendChild(h("td", r.place || "—")); tr.appendChild(h("td", String(r.aqi))); tr.appendChild(catCell(r.cat));
+      body.appendChild(tr);
+    });
+    const cb = $("cmp-body"); cb.textContent = "";
+    places.forEach((p) => {
+      const tr = h("tr"); tr.appendChild(h("td", p.place)); tr.appendChild(h("td", String(p.aqi))); tr.appendChild(catCell(p.cat)); tr.appendChild(h("td", String(p.n)));
+      const td = h("td"), bar = h("span", undefined, "cmp"); bar.style.width = Math.max(4, p.aqi / 5) + "%"; bar.style.maxWidth = "160px"; bar.setAttribute("aria-hidden", "true"); td.appendChild(bar); tr.appendChild(td); cb.appendChild(tr);
+    });
+  }
+
+  function analyze() {
+    const v = AQI.validate($("aqi").value);
+    if (!v.ok) { $("result").hidden = true; $("alert").hidden = true; A11y.showError(v.msg); return; }
+    A11y.showError("");
+    const idx = AQI.levelIndex(v.value), lv = AQI.LEVELS[idx], tips = AQI.advise(v.value, $("group").value);
+    const place = $("place").value.trim().slice(0, 40), color = "var(--" + lv.key + ")";
+    $("r-title").textContent = (place ? place + ": " : "") + "AQI " + v.value + " · " + lv.name;
+    $("r-title").style.color = color; $("r-desc").textContent = lv.desc; $("result").style.borderLeftColor = color;
+    $("mark").style.left = Math.min(100, v.value / 5) + "%";
+    $("meter").setAttribute("aria-valuenow", String(AQI.risk(v.value))); $("r-risk").textContent = "Risk score: " + AQI.risk(v.value) + " out of 100";
+    const ul = $("r-adv"); ul.textContent = ""; tips.forEach((t) => ul.appendChild(h("li", t)));
+    const al = $("alert");
+    al.hidden = idx < 4; al.textContent = idx >= 5 ? "EMERGENCY POLLUTION ALERT: hazardous air. Stay indoors and avoid all outdoor exposure." : idx === 4 ? "HEALTH ALERT: very unhealthy air. Avoid outdoor activity." : "";
+    $("result").hidden = false;
+    last = "Air quality index " + v.value + ", " + lv.name + ". " + tips.join(" ");
+    Store.add({ t: Date.now(), aqi: v.value, place: place, cat: lv.name });
+    renderHistory();
+  }
+
+  function report() {
+    const list = Store.all(), s = Store.stats(list);
+    const txt = "Urban Air Quality Assistant: Report\nGenerated: " + new Date().toLocaleString() + "\nChecks: " + s.count + " | Average AQI: " + s.avg + " | Highest: " + s.max + " | Lowest: " + s.min + "\n\n" +
+      list.map((r) => new Date(r.t).toLocaleString() + " | " + (r.place || "-") + " | AQI " + r.aqi + " | " + r.cat).join("\n") + "\n\nGeneral information only, not medical advice.\n";
+    download("aqi-report.txt", txt, "text/plain");
+  }
+
+  function init() {
+    A11y.initTheme();
+    const sb = $("scale-body"); let lo = 0;
+    AQI.LEVELS.forEach((l) => { const tr = h("tr"); tr.appendChild(h("td", lo + "–" + l.max)); const td = h("td", l.name); td.className = "cat-" + l.key; tr.appendChild(td); sb.appendChild(tr); lo = l.max + 1; });
+    $("analyze").addEventListener("click", analyze);
+    $("aqi").addEventListener("keydown", (e) => { if (e.key === "Enter") { analyze(); } });
+    $("sample").addEventListener("click", () => { $("aqi").value = [42, 87, 135, 178, 245, 340][Math.floor(Math.random() * 6)]; analyze(); });
+    $("speak").addEventListener("click", () => { if (last) { A11y.speak(last); } });
+    $("theme").addEventListener("click", A11y.toggleTheme);
+    $("csv").addEventListener("click", () => download("aqi-history.csv", Store.toCSV(Store.all()), "text/csv"));
+    $("report").addEventListener("click", report);
+    $("clear").addEventListener("click", () => { Store.clear(); renderHistory(); });
+    $("run-tests").addEventListener("click", Tests.render);
+    renderHistory();
+  }
+  return { init };
+})();
+
+/* ========= Module: Tests (in-browser automated checks of the pure logic) ========= */
+const Tests = (() => {
+  const cat = (n) => AQI.LEVELS[AQI.levelIndex(n)].name;
+  const cases = [
+    ["AQI 25", "Good", () => cat(25)], ["AQI 75", "Moderate", () => cat(75)],
+    ["AQI 125", "Unhealthy for Sensitive Groups", () => cat(125)], ["AQI 175", "Unhealthy", () => cat(175)],
+    ["AQI 250", "Very Unhealthy", () => cat(250)], ["AQI 400", "Hazardous", () => cat(400)],
+    ["Boundary 0", "Good", () => cat(0)], ["Boundary 50", "Good", () => cat(50)], ["Boundary 51", "Moderate", () => cat(51)], ["Boundary 500", "Hazardous", () => cat(500)],
+    ["Reject blank", "invalid", () => (AQI.validate("").ok ? "valid" : "invalid")], ["Reject -5", "invalid", () => (AQI.validate("-5").ok ? "valid" : "invalid")],
+    ["Reject 600", "invalid", () => (AQI.validate("600").ok ? "valid" : "invalid")], ["Reject 12.5", "invalid", () => (AQI.validate("12.5").ok ? "valid" : "invalid")],
+    ["Reject text", "invalid", () => (AQI.validate("abc").ok ? "valid" : "invalid")], ["Accept 42", "valid", () => (AQI.validate("42").ok ? "valid" : "invalid")],
+    ["Children tip at 135", "yes", () => (AQI.advise(135, "children")[0].indexOf("Children") === 0 ? "yes" : "no")],
+    ["No children tip at 40", "no", () => (AQI.advise(40, "children")[0].indexOf("Children") === 0 ? "yes" : "no")],
+    ["CSV formula neutralised", "'=SUM(1)", () => Store.cell("=SUM(1)")],
+    ["CSV quotes escaped", '"a ""b"", c"', () => Store.cell('a "b", c')]
+  ];
+  function render() {
+    const body = $("t-body"); body.textContent = ""; let pass = 0;
+    cases.forEach((c) => {
+      let actual; try { actual = String(c[2]()); } catch (e) { actual = "error"; }
+      const ok = actual === c[1]; if (ok) { pass++; }
+      const tr = h("tr"); [c[0], c[1], actual, ok ? "✔ Pass" : "✘ Fail"].forEach((t) => tr.appendChild(h("td", t))); body.appendChild(tr);
+    });
+    $("t-table").hidden = false;
+    $("t-sum").textContent = pass + " of " + cases.length + " tests passed.";
+  }
+  return { render };
+})();
+
+UI.init();
+</script>
+</body>
+</html>
